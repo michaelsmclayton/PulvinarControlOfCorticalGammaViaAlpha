@@ -1,6 +1,8 @@
 classdef NeuralArea < handle % 'handle' allows properties to be updated
     
-   %% Initial class properties
+   %-----------------------------------------------------------------------
+   %% INITIAL CLASS PROPERTIES
+   %-----------------------------------------------------------------------
    properties
        
        % Numbers of each neuron type
@@ -27,14 +29,17 @@ classdef NeuralArea < handle % 'handle' allows properties to be updated
            'lts', struct('mean', 4, 'std', 4));
        
        % Parameters to be filled in constructor function
-       A; B; C; D; synapses; allSynapses; v; u; totalNeurons; v_timeseries; u_timeseries;
+       A; B; C; D; synapses; allIntraSynapses; allInterSynapses v;
+       u; totalNeurons; v_timeseries; u_timeseries;
        
        % Contents to be filled during simulation
-       fired; firings; I;
+       fired; firings; I; excitatoryFired;
  
    end
    
-   %% Class methods
+   %-----------------------------------------------------------------------
+   %% CLASS METHODS
+   %-----------------------------------------------------------------------
    methods
        
        %-------------------------------------------------------------------
@@ -60,7 +65,7 @@ classdef NeuralArea < handle % 'handle' allows properties to be updated
                        obj.params.fastSpiking.d * ones(obj.n_fastSpiking,1), ...
                        obj.params.lowThreshSpiking.d * ones(obj.n_lowThreshSpiking,1));
                    
-           % Create synaptic connections
+           % Create intrasynaptic connections (i.e. within a single area)
            obj.synapses = struct(...
                'rs', struct('rs', obj.connectivity.rs.rs * ones(obj.n_regularSpiking, obj.n_regularSpiking), ...
                             'fs', obj.connectivity.rs.fs * ones(obj.n_regularSpiking, obj.n_fastSpiking), ...
@@ -71,9 +76,12 @@ classdef NeuralArea < handle % 'handle' allows properties to be updated
                'lts', struct('rs', obj.connectivity.lts.rs * ones(obj.n_lowThreshSpiking, obj.n_regularSpiking), ...
                             'fs', obj.connectivity.lts.fs * ones(obj.n_lowThreshSpiking, obj.n_fastSpiking), ...
                             'lts', obj.connectivity.lts.lts * ones(obj.n_lowThreshSpiking, obj.n_lowThreshSpiking)));
-           obj.allSynapses = vertcat(horzcat(obj.synapses.rs.rs, obj.synapses.rs.fs, obj.synapses.rs.lts), ...
+           obj.allIntraSynapses = vertcat(horzcat(obj.synapses.rs.rs, obj.synapses.rs.fs, obj.synapses.rs.lts), ...
                       horzcat(obj.synapses.fs.rs, obj.synapses.fs.fs, obj.synapses.fs.lts), ...
                       horzcat(obj.synapses.lts.rs, obj.synapses.lts.fs, obj.synapses.lts.lts));
+           
+           % Create intersynaptic connections (i.e. between the two areas)
+           obj.allInterSynapses = obj.connectivity.rs.rs * ones(obj.n_regularSpiking, obj.n_regularSpiking);
            
            % Set, for all neurons, initial value of V to -65 (membrane potential of the simulated neuron)
            obj.v = -65*ones(obj.totalNeurons,1);
@@ -81,24 +89,16 @@ classdef NeuralArea < handle % 'handle' allows properties to be updated
            % Set 'u' values as initial 'v' values, multipled by 'b' (sensitivity to 'u')
            obj.u = obj.B.*obj.v;
            
-           % Initialise stores for timeseries data
-           obj.v_timeseries = zeros(obj.totalNeurons, simulationLength);
-           obj.u_timeseries = zeros(obj.totalNeurons, simulationLength);
-           
        end
            
        %-------------------------------------------------------------------
        % General update method
        %-------------------------------------------------------------------
-       function update(obj, t, timePoint)
+       function update(obj, t, alphaAmplitude, otherArea)
            
            % Find which neurons have fired (i.e. v>30)
            obj.fired = find(obj.v >= 30);    % indices of spikes
            obj.firings = [obj.firings; t+0*obj.fired, obj.fired]; % Concatenate time and which neuron has fired to 'firings'
-           
-           % Record current values of 'v' and 'u'
-           obj.v_timeseries(:,timePoint) = obj.v;
-           obj.u_timeseries(:,timePoint) = obj.u;
            
            % Fulfil reset conditions
            obj.v(obj.fired) = obj.C(obj.fired);
@@ -114,19 +114,35 @@ classdef NeuralArea < handle % 'handle' allows properties to be updated
                            obj.noise.lts.std .* randn(obj.n_lowThreshSpiking,1) + obj.noise.lts.mean);
 
            % Add inputs from synapses of fired neurons
-           obj.I = obj.I + sum(obj.allSynapses(:,obj.fired),2); % Add synaptic weights from neurons that have fired
-  
+           obj.I = obj.I + sum(obj.allIntraSynapses(:,obj.fired),2); % Add synaptic weights from neurons that have fired
+
+%            % --------------------------
+%            % Add input from other area
+%            % --------------------------
+%            obj.excitatoryFired = find(obj.fired <=obj.n_regularSpiking);
+%            obj.I(1:obj.n_regularSpiking) = obj.I(1:obj.n_regularSpiking) + sum(obj.allInterSynapses(:,obj.excitatoryFired),2); % Add synaptic weights from neurons that have fired
+
            % Add alpha waves input to inhibitory neurons
-           obj.I(obj.n_regularSpiking+1:end) = obj.I(obj.n_regularSpiking+1:end) + 1.5*sin(t/15.9); % Approximates alpha rhythm
+           obj.I(obj.n_regularSpiking+1:end) = obj.I(obj.n_regularSpiking+1:end) + alphaAmplitude; % Approximates alpha rhythm
            
            % --------------------------------------------------------------
            
            % Determine and update current membrane voltage ('v')
            obj.v = obj.v + 0.5*(0.04*obj.v.^2+5*obj.v+140-obj.u+obj.I); % Two sequential steps of 0.5ms for numerical stability
            obj.v = obj.v + 0.5*(0.04*obj.v.^2+5*obj.v+140-obj.u+obj.I);
+           obj.v_timeseries = horzcat(obj.v_timeseries, obj.v);
   
            % Determine current slow recovery status ('u') 
            obj.u = obj.u + (obj.A .* ((obj.B.*obj.v) - obj.u));
+           obj.u_timeseries = horzcat(obj.u_timeseries, obj.u);
+           
+       %-------------------------------------------------------------------
+       % Inter-areal communication
+       %-------------------------------------------------------------------
+       
+       % This function should be called after update. It should find which
+       % excitatory neurons have fired in the other area (otherArea). It
+       % should then
  
        end
    end
