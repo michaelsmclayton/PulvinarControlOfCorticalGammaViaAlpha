@@ -16,17 +16,18 @@ classdef Oscillator < handle % 'handle' allows properties to be updated
        %-------------------------------------------------------------------
        % Constructor method
        %-------------------------------------------------------------------
-       function obj = Oscillator(phaseShift, alphaAmplitude)
+       function obj = Oscillator(phaseShift, alphaAmplitude, simulationLength)
            obj.phaseShift = phaseShift;
            obj.alphaAmplitude = alphaAmplitude;
+           obj.timeseries = zeros(simulationLength,1);
        end
        
        %-------------------------------------------------------------------
        % Update sinusoid
        %-------------------------------------------------------------------
-       function update(obj, t)   
+       function update(obj, t) 
            obj.currentVoltage = obj.alphaAmplitude * cos(2*pi * obj.frequency * (t+obj.phaseShift));
-           obj.timeseries = horzcat(obj.timeseries, obj.currentVoltage);
+           obj.timeseries(t) = obj.currentVoltage;
        end
        
    end

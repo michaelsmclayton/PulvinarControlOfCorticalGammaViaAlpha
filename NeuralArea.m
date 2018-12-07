@@ -93,6 +93,10 @@ classdef NeuralArea < handle % 'handle' allows properties to be updated
            % Set 'u' values as initial 'v' values, multipled by 'b' (sensitivity to 'u')
            obj.u = obj.B.*obj.v;
            
+           % Initialise datastores
+           obj.v_timeseries = zeros(simulationLength, obj.totalNeurons);
+           obj.u_timeseries = zeros(simulationLength, obj.totalNeurons);
+           
        end
            
        %-------------------------------------------------------------------
@@ -134,11 +138,11 @@ classdef NeuralArea < handle % 'handle' allows properties to be updated
            % Determine and update current membrane voltage ('v')
            obj.v = obj.v + 0.5*(0.04*obj.v.^2+5*obj.v+140-obj.u+obj.I); % Two sequential steps of 0.5ms for numerical stability
            obj.v = obj.v + 0.5*(0.04*obj.v.^2+5*obj.v+140-obj.u+obj.I);
-           obj.v_timeseries = horzcat(obj.v_timeseries, obj.v);
+           obj.v_timeseries(t,:) = obj.v;
   
            % Determine current slow recovery status ('u') 
            obj.u = obj.u + (obj.A .* ((obj.B.*obj.v) - obj.u));
-           obj.u_timeseries = horzcat(obj.u_timeseries, obj.u);
+           obj.u_timeseries(t,:) = obj.u;
            
        %-------------------------------------------------------------------
        % Inter-areal communication
