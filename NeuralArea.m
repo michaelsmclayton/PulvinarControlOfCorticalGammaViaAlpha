@@ -21,6 +21,10 @@ classdef NeuralArea < handle % 'handle' allows properties to be updated
            'rs', struct('rs', .0375, 'fs', -.25, 'lts', -.3), ...
            'fs', struct('rs', .125, 'fs', -.15, 'lts', -.1), ...
            'lts', struct('rs', .125, 'fs', -.1, 'lts', 0));
+%        connectivity = struct(... % Other interpretation of connectivity table
+%            'rs', struct('rs', .0375, 'fs', .125, 'lts', .125), ...
+%            'fs', struct('rs', -.25, 'fs', -.15, 'lts', -.1), ...
+%            'lts', struct('rs', -.3, 'fs', -.1, 'lts', 0));
        
        % Noise parameters
        noise = struct(...
@@ -116,11 +120,11 @@ classdef NeuralArea < handle % 'handle' allows properties to be updated
            % Add inputs from synapses of fired neurons
            obj.I = obj.I + sum(obj.allIntraSynapses(:,obj.fired),2); % Add synaptic weights from neurons that have fired
 
-%            % --------------------------
-%            % Add input from other area
-%            % --------------------------
-%            obj.excitatoryFired = find(obj.fired <=obj.n_regularSpiking);
-%            obj.I(1:obj.n_regularSpiking) = obj.I(1:obj.n_regularSpiking) + sum(obj.allInterSynapses(:,obj.excitatoryFired),2); % Add synaptic weights from neurons that have fired
+           % --------------------------
+           % Add input from other area
+           % --------------------------
+           obj.excitatoryFired = find(obj.fired <=obj.n_regularSpiking);
+           obj.I(1:obj.n_regularSpiking) = obj.I(1:obj.n_regularSpiking) + sum(obj.allInterSynapses(:,obj.excitatoryFired),2); % Add synaptic weights from neurons that have fired
 
            % Add alpha waves input to inhibitory neurons
            obj.I(obj.n_regularSpiking+1:end) = obj.I(obj.n_regularSpiking+1:end) + alphaAmplitude; % Approximates alpha rhythm

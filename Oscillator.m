@@ -5,7 +5,7 @@ classdef Oscillator < handle % 'handle' allows properties to be updated
    %-----------------------------------------------------------------------
    properties
        frequency = 10 / 1000;
-       phaseShift; alphaAmplitude; timeseries;
+       phaseShift; currentVoltage; timeseries; alphaAmplitude;
    end
    
    %-----------------------------------------------------------------------
@@ -16,16 +16,17 @@ classdef Oscillator < handle % 'handle' allows properties to be updated
        %-------------------------------------------------------------------
        % Constructor method
        %-------------------------------------------------------------------
-       function obj = Oscillator(phaseShift)
+       function obj = Oscillator(phaseShift, alphaAmplitude)
            obj.phaseShift = phaseShift;
+           obj.alphaAmplitude = alphaAmplitude;
        end
        
        %-------------------------------------------------------------------
        % Update sinusoid
        %-------------------------------------------------------------------
        function update(obj, t)   
-           obj.alphaAmplitude = 2 * cos(2*pi * obj.frequency * (t+obj.phaseShift));
-           obj.timeseries = horzcat(obj.timeseries, obj.alphaAmplitude);
+           obj.currentVoltage = obj.alphaAmplitude * cos(2*pi * obj.frequency * (t+obj.phaseShift));
+           obj.timeseries = horzcat(obj.timeseries, obj.currentVoltage);
        end
        
    end
