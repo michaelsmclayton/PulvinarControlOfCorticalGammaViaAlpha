@@ -6,13 +6,13 @@ addpath(genpath('/Users/michaelclayton/Documents/Neuroscience/ComputationalModel
 
 % Simulation length
 numberOfTrials = 10;
-fullSimulationLength = 2000;
+fullSimulationLength = 1000;
 windowToRemove = 50; % The first few milliseconds are quite unsettled
 simulationLength = fullSimulationLength + windowToRemove;
 timePoints = linspace(1, simulationLength, simulationLength);
 
 % Oscillator parameters
-phaseShift = 0;
+phaseShift = 50;
 alphaAmplitude = 2;
 
 % Plot parameters
@@ -58,33 +58,44 @@ for trial = 1:numberOfTrials
 end
 
 
+%% Plot rastergram of excitatory (red) and inhibitory (blue) neurons in one population during an interval of 1000 ms.
+hFig = figure(1); hold on;
+set(hFig, 'Position', [10 10 600 500]) 
+excitatorySpikes1 = find(area1.firings(:,2)<=area1.n_regularSpiking);
+inhibitorySpikes1 = find(area1.firings(:,2)>area1.n_regularSpiking);
+excitatorySpikes2 = find(area2.firings(:,2)<=area2.n_regularSpiking);
+inhibitorySpikes2 = find(area2.firings(:,2)>area2.n_regularSpiking);
+plot(area1.firings(excitatorySpikes1,1), area1.firings(excitatorySpikes1,2), '.', 'Color', 'r');
+plot(area1.firings(inhibitorySpikes1,1), area1.firings(inhibitorySpikes1,2), '.', 'Color', [0 .2 .7]);
+ylabel('Neuron #')
+xlabel('Time (ms)') 
+set(gca,'FontSize', fontSize)
+% subplot(2,1,2); hold on;
+% plot(area2.firings(excitatorySpikes2,1), area2.firings(excitatorySpikes2,2), '.', 'Color', 'r');
+% plot(area2.firings(inhibitorySpikes2,1), area2.firings(inhibitorySpikes2,2), '.', 'Color', [0 .2 .7]);
+% set(gca,'FontSize', fontSize)
+
+
 %% Calculate and Spike Time Histogram (STM) and Power
 STM = {};
 areaToAnalyse = 1;
 
 % Frequency spectrum parameters
 params.Fs = 1000;
-params.fpass = 4:100;
+params.fpass = 1:100;
 params.tapers = [5 10];
 params.trialave = 1;
-params.err = [2, .05];
+params.err = [2,0.05];
 
 % Spectrogram parameters
-window = [.3 0.02];
+window = [.3 0.1];
 specParams = params;
-specParams.fpass = 5:100;
-specParams.pad = -1;
-specParams.tapers= [4 window(1) 1];
+specParams.fpass=[5 100];
+specParams.tapers=[5 window(1) 1];
 
-% Wavelet parameters
-scales = logspace(log10(150),1);
-F = scal2frq(scales,'cmor1-1',1/1000);
-
-% Initiaise storage
 powerStore = []; %zeros(numberOfTrials, length(params.fpass)+1);
 spectrogramStore = [];
 
-% Loop
 for trial = 1:numberOfTrials
 
     % Calculate STM
@@ -103,45 +114,23 @@ for trial = 1:numberOfTrials
     [powerStore(trial,:), fPower, Serr]= mtspectrumc(STM{1},params);
     
     % Calculate current spectrogram
-    spectrogramStore(trial,:,:) = cwt(STM{1}, scales,'cmor1-1','plot');
-    % [spectrogramStore(trial,:,:), times, fSpec, err] = mtspecgramc(STM{1}', window, specParams);
+    [spectrogramStore(trial,:,:), times, fSpec, err] = mtspecgramc(STM{1}', window, specParams);
 
 end
-close all;
 
-% % Plot power
-% figure(5)
-% plot(fPower, mean(powerStore))
+% Plot power
+figure(5)
+plot(fPower, mean(powerStore))
 
-% Plot wavelet
-for i = 1:numberOfTrials
-    figure(200+i)
-    wscalogram('image', squeeze(spectrogramStore(i,:,:)), 'scales', F);
-    ylim([2 50])
-    title(' ')
-    ylabel('Frequency (Hz)')
-    xlabel('Time (ms)')
-    colormap default
-end
+figure(6)
+normalisedSpectrogramStore = spectrogramStore;
+for i = 1:size(spectrogramStore,2)
+    normalisedSpectrogramStore(:,i,:) = 
 
 
-%% Plot rastergram of excitatory (red) and inhibitory (blue) neurons in one population during an interval of 1000 ms.
-hFig = figure(1); hold on;
-set(hFig, 'Position', [10 10 600 500]) 
-excitatorySpikes1 = find(area1.firings(:,2)<=area1.n_regularSpiking);
-inhibitorySpikes1 = find(area1.firings(:,2)>area1.n_regularSpiking);
-excitatorySpikes2 = find(area2.firings(:,2)<=area2.n_regularSpiking);
-inhibitorySpikes2 = find(area2.firings(:,2)>area2.n_regularSpiking);
-plot(area1.firings(excitatorySpikes1,1), area1.firings(excitatorySpikes1,2), '.', 'Color', 'r');
-plot(area1.firings(inhibitorySpikes1,1), area1.firings(inhibitorySpikes1,2), '.', 'Color', [0 .2 .7]);
-ylabel('Neuron #')
-xlabel('Time (ms)') 
-set(gca,'FontSize', fontSize)
-% subplot(2,1,2); hold on;
-% plot(area2.firings(excitatorySpikes2,1), area2.firings(excitatorySpikes2,2), '.', 'Color', 'r');
-% plot(area2.firings(inhibitorySpikes2,1), area2.firings(inhibitorySpikes2,2), '.', 'Color', [0 .2 .7]);
-% set(gca,'FontSize', fontSize)
-
+normalisedSpectrogramStore = spectrogramStore ./ spectrogramStore(:,1,:);
+pcolor(times, fSpec, squeeze(mean(spectrogramStore,1))')
+shading flat
 
 %%  Plot Spike Time Histogram
 red = [1 .2 0]; blue = [0 .2 1];
