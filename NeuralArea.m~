@@ -128,10 +128,11 @@ classdef NeuralArea < handle % 'handle' allows properties to be updated
            % Add input from other area
            % --------------------------
            if otherArea==true
-               obj.excitatoryFired = find(otherArea.fired <= obj.n_regularSpiking);
-               obj.I(1:obj.n_regularSpiking) = obj.I(1:obj.n_regularSpiking) + sum(obj.allInterSynapses(:,obj.excitatoryFired),2); % Add synaptic weights from neurons that have fired
+               
            end
-           
+           obj.excitatoryFired = find(otherArea.fired <= obj.n_regularSpiking);
+           obj.I(1:obj.n_regularSpiking) = obj.I(1:obj.n_regularSpiking) + sum(obj.allInterSynapses(:,obj.excitatoryFired),2); % Add synaptic weights from neurons that have fired
+
            % Add alpha waves input to inhibitory neurons
            obj.I(obj.n_regularSpiking+1:end) = obj.I(obj.n_regularSpiking+1:end) + alphaAmplitude; % Approximates alpha rhythm
            

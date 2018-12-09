@@ -1,18 +1,19 @@
 clear all; close all; clc;
-% Main script
+addpath(genpath('/Users/michaelclayton/Documents/Neuroscience/ComputationalModels/chronux_2_12'))
+
 
 %% Simulation parameters
 
 % Simulation length
 numberOfTrials = 50;
-simulationLength = 1000;
+fullSimulationLength = 2000;
 windowToRemove = 50; % The first few milliseconds are quite unsettled
-simulationLength = simulationLength + windowToRemove;
+simulationLength = fullSimulationLength + windowToRemove;
 timePoints = linspace(1, simulationLength, simulationLength);
 
 % Oscillator parameters
 phaseShift = 50;
-alphaAmplitude = 2;
+alphaAmplitude = 0;
 
 % Plot parameters
 fontSize = 14;
@@ -43,12 +44,12 @@ for trial = 1:numberOfTrials
 
         % Update neural areas
         area1.update(t, oscillator1.currentVoltage, area2)
-        area2.update(t, oscillator2.currentVoltage, area1)
+        area2.update(t, oscillator2.currentVoltage, false)
     end
 
     % Remove opening window from sample
-    area1.firings(find(area1.firings(:,1)<=windowToRemove),:) = [];
-    area2.firings(find(area2.firings(:,1)<=windowToRemove),:) = [];
+    area1.firings(area1.firings(:,1)<=windowToRemove,:) = [];
+    area2.firings(area2.firings(:,1)<=windowToRemove,:) = [];
     area1.firings(:,1) = area1.firings(:,1) - windowToRemove;
     area2.firings(:,1) = area2.firings(:,1) - windowToRemove;
     
@@ -78,13 +79,13 @@ set(gca,'FontSize', fontSize)
 %% Calculate and Spike Time Histogram (STM) and Power
 STM = {};
 areaToAnalyse = 1;
-params.Fs=1000;
-params.fpass=5:100;
-params.tapers=[5 10];
-% params.tapers=[1 2 1];
+params.Fs = 1000;
+params.fpass = 5:100;
+params.tapers = [5 10];
+% params.tapers = [1 2 1];
 params.trialave = 1;
 params.err = [2,0.05];
-powerStore = zeros(numberOfTrials, length(params.fpass)+1);
+powerStore = []; %zeros(numberOfTrials, length(params.fpass)+1);
 for trial = 1:numberOfTrials
 
     % Calculate STM
@@ -104,6 +105,9 @@ for trial = 1:numberOfTrials
     
 end
 
+% Plot power
+figure(5)
+plot(f, mean(powerStore))
 
 %%  Plot Spike Time Histogram
 red = [1 .2 0]; blue = [0 .2 1];
@@ -119,10 +123,6 @@ xlabel('Time (ms)')
 set(gca,'FontSize', fontSize)
 ylim([-7 10])
 
-
-% %% Plot power
-% figure(5)
-% plot(mean(powerStore).*f)
 
 % Plot oscillators
 % figure(1); hold on
