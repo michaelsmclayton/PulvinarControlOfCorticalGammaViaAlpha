@@ -1,11 +1,10 @@
 clear all; close all; clc;
 addpath(genpath('/Users/michaelclayton/Documents/Neuroscience/ComputationalModels/chronux_2_12'))
 
-
 %% Simulation parameters
 
 % Simulation length
-numberOfTrials = 10;
+numberOfTrials = 5;
 fullSimulationLength = 2000;
 windowToRemove = 50; % The first few milliseconds are quite unsettled
 simulationLength = fullSimulationLength + windowToRemove;
@@ -13,7 +12,7 @@ timePoints = linspace(1, simulationLength, simulationLength);
 
 % Oscillator parameters
 phaseShift = 0;
-alphaAmplitude = 2;
+alphaAmplitude = 3;
 
 % Plot parameters
 fontSize = 14;
@@ -77,7 +76,7 @@ specParams.pad = -1;
 specParams.tapers= [4 window(1) 1];
 
 % Wavelet parameters
-scales = logspace(log10(150),1);
+scales = logspace(log10(150),.8);
 F = scal2frq(scales,'cmor1-1',1/1000);
 
 % Initiaise storage
@@ -103,26 +102,50 @@ for trial = 1:numberOfTrials
     [powerStore(trial,:), fPower, Serr]= mtspectrumc(STM{1},params);
     
     % Calculate current spectrogram
-    spectrogramStore(trial,:,:) = cwt(STM{1}, scales,'cmor1-1','plot');
+    currentCoefficients = cwt(STM{1}, scales,'cmor1-1','plot');
+    spectrogramStore(trial,:,:) = wscalogram('image', squeeze(currentCoefficients), 'scales', F);
+    
+    % Normalising and smoothing
+    smoothing = 10;
+    for f = 1:size(spectrogramStore(trial,:,:),2)
+        spectrogramStore(trial,f,:) = spectrogramStore(trial,f,:) / max(spectrogramStore(trial,f,:));
+        spectrogramStore(trial,f,:) = smooth(spectrogramStore(trial,f,:), smoothing);
+    end
+    
     % [spectrogramStore(trial,:,:), times, fSpec, err] = mtspecgramc(STM{1}', window, specParams);
 
 end
-close all;
 
-% % Plot power
-% figure(5)
-% plot(fPower, mean(powerStore))
 
-% Plot wavelet
+%% Plot spectrograms
 for i = 1:numberOfTrials
     figure(200+i)
-    wscalogram('image', squeeze(spectrogramStore(i,:,:)), 'scales', F);
-    ylim([2 50])
-    title(' ')
-    ylabel('Frequency (Hz)')
-    xlabel('Time (ms)')
-    colormap default
+    data = squeeze(spectrogramStore(i,:,:));
+    data = flipud(data);
+    imagesc(data)
+    caxis([0 1]);
+    colorbar;
+    colormap jet
+    ax = gca;
+    ax.YTick = 1:5:length(F);
+    ax.YTickLabel = fliplr(F(ax.YTick));
+    xlim([1 1000])
 end
+
+% % % Plot power
+% % figure(5)
+% % plot(fPower, mean(powerStore))
+% 
+% % Plot wavelet
+% for i = 1:numberOfTrials
+%     figure(200+i)
+%     wscalogram('image', squeeze(spectrogramStore(i,:,:)), 'scales', F);
+%     ylim([2 50])
+%     title(' ')
+%     ylabel('Frequency (Hz)')
+%     xlabel('Time (ms)')
+%     colormap default
+% end
 
 
 %% Plot rastergram of excitatory (red) and inhibitory (blue) neurons in one population during an interval of 1000 ms.
