@@ -4,7 +4,7 @@ clear all; close all; clc;
 addpath(genpath('./functions')) % for helper function
 addpath(genpath('./classes')) % for class defintions
 addpath(genpath('../chronux_2_12')) % for Chronux library
-
+fontSize = 14; % For subsequent figures
 
 %% Run simulation
 
@@ -50,16 +50,19 @@ powerParams.scales = logspace(1, log10(150)); % frequencies for spectrogram anal
 % Plot sample spectrogram
 hFig = figure(4); hold on;
 set(hFig, 'Position', [10 10 600 500])
-sampleSpectrogramData = squeeze(excitatorySpectrogramStore(1,1,:,:));
+sampleSpectrogramData = squeeze(excitatorySpectrogramStore(1,7,:,:));
 imagesc(flipud(sampleSpectrogramData))
 caxis([0 1]);
 colorbar;
 colormap jet
 ax = gca;
 ax.YTick = 1:5:length(F);
-ax.YTickLabel = F(ax.YTick);
+ax.YTickLabel = fliplr(round(F(ax.YTick)));
 ylim([1 50])
 xlim([1 1000])
+ylabel('Frequency (Hz')
+xlabel('Time (ms')
+set(gca,'FontSize', fontSize)
 
 
 %% Analyse gamma power by alpha phase bin
@@ -113,7 +116,6 @@ ax.XTickLabel = angles;
 
 
 %% Plot rastergram of excitatory (red) and inhibitory (blue) neurons in one population during an interval of 1000 ms.
-fontSize = 14;
 hFig = figure(1); hold on;
 set(hFig, 'Position', [10 10 600 500]) 
 excitatorySpikes1 = find(area1.firings(:,2)<=area1.n_regularSpiking);
