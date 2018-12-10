@@ -1,0 +1,69 @@
+function [excitatoryPowerStore, inhibitoryPowerStore, ...
+    excitatorySpectrogramStore] = calculatePower(STM, powerParams)
+
+    addpath(genpath('../../chronux_2_12')) % for Chronux library
+
+    % Initialise stores
+    excitatoryPowerStore = [];
+    inhibitoryPowerStore = [];
+    excitatorySpectrogramStore = [];
+    inhibitorySpectrogramStore = [];
+    
+    % Get frequencies for spectrogram analysis
+    F = scal2frq(powerParams.scales,'cmor1-1',1/1000);
+    
+    % Loop over trials
+    for trial = 1:size(STM,2)
+        
+        % Loop over neural area
+        for currentArea = 1:2
+            
+            % CALCULATE POWER SPECTRA -------------------------------------
+            
+            % Get excitatory power spectrum
+            [excitatoryPowerStore(trial, currentArea, :), fPower, Serr] = ...
+                mtspectrumc(STM{trial}.excitatory(currentArea,:), powerParams);
+           
+            % Get excitatory power spectrum
+            [inhibitoryPowerStore(trial, currentArea, :), ~, ~] = ...
+                mtspectrumc(STM{trial}.inhibitory(currentArea,:), powerParams);
+            
+            
+            % CALCULATE SPECTROGRAM DATA ----------------------------------
+            
+            % Get excitatory spectrogram data
+            excitatoryCoefficients = cwt(STM{trial}.excitatory(currentArea,:), powerParams.scales,'cmor1-1','plot');
+            excitatorySpectrogramStore(currentArea, trial, :, :) = wscalogram('image', squeeze(excitatoryCoefficients), 'scales', F);
+            
+            % Get inhibitory spectrogram data
+            inhibitoryCoefficients = cwt(STM{trial}.inhibitory(currentArea,:), powerParams.scales,'cmor1-1','plot');
+            inhibitorySpectrogramStore(currentArea, trial, :, :) = wscalogram('image', squeeze(inhibitoryCoefficients), 'scales', F);
+            
+            % Normalise spectrogram data
+            
+ 
+        end
+        
+        
+    end
+    
+    
+% 
+%     % Calculate power
+%     [powerStore(trial,:), fPower, Serr]= 
+%     
+%     % Calculate current spectrogram
+%     currentCoefficients = cwt(STM{1}, scales,'cmor1-1','plot');
+%     spectrogramStore(trial,:,:) = wscalogram('image', squeeze(currentCoefficients), 'scales', F);
+%     % [spectrogramStore(trial,:,:), times, fSpec, err] = mtspecgramc(STM{1}', window, specParams);
+%     
+%     % Normalising and smoothing
+%     smoothing = 20;
+%     timesToAnalyse = 1:1000;
+%     for f = 1:size(spectrogramStore(trial,:,:),2)
+%         spectrogramStore(trial,f,timesToAnalyse) = spectrogramStore(trial,f,timesToAnalyse) / max(spectrogramStore(trial,f,timesToAnalyse));
+%         spectrogramStore(trial,f,timesToAnalyse) = smooth(spectrogramStore(trial,f,timesToAnalyse), smoothing);
+%     end
+
+end
+

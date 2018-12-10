@@ -1,0 +1,198 @@
+clear all; close all; clc;
+
+%% Add necessary paths
+addpath(genpath('./functions')) % for helper function
+addpath(genpath('./classes')) % for class defintions
+addpath(genpath('../chronux_2_12')) % for Chronux library
+
+
+%% Run simulation
+
+% Define simulation parameters
+simParams.numberOfTrials = 10;
+fullSimulationLength = 2000;
+simParams.windowToRemove = 50; % The first few milliseconds are quite unsettled
+simParams.simulationLength = fullSimulationLength + simParams.windowToRemove;
+
+% Define oscillator parameters
+simParams.phaseShift = 0;
+simParams.alphaAmplitude = 2;
+
+% Run model
+[area1, area2, oscillator1, oscillator2, allSpikes] = runModel(simParams);
+
+% Plot rastergram of excitatory (red) and inhibitory (blue) neurons in one population during an interval of 1000 ms.
+fontSize = 14;
+hFig = figure(1); hold on;
+set(hFig, 'Position', [10 10 600 500]) 
+excitatorySpikes1 = find(area1.firings(:,2)<=area1.n_regularSpiking);
+inhibitorySpikes1 = find(area1.firings(:,2)>area1.n_regularSpiking);
+plot(area1.firings(excitatorySpikes1,1), area1.firings(excitatorySpikes1,2), '.', 'Color', 'r');
+plot(area1.firings(inhibitorySpikes1,1), area1.firings(inhibitorySpikes1,2), '.', 'Color', [0 .2 .7]);
+ylabel('Neuron #')
+xlabel('Time (ms)') 
+set(gca,'FontSize', fontSize)
+
+
+%% Calculate and plot sample spike time histogram (STM)
+
+% Use helper function to get data
+[STM] = calculateSTM(allSpikes, simParams); % shape {trials}(struct: excitatory vs. inhibitory)
+
+% Plot a sample STM
+hFig = figure(2); hold on;
+set(hFig, 'Position', [10 10 600 500])
+red = [1 .2 0]; blue = [0 .2 1]; smoothing = 10;
+excitatoryData = smooth(STM{1}.excitatory(1,:), smoothing);
+inhibitoryData = smooth(STM{1}.inhibitory(1,:), smoothing);
+area(excitatoryData, 'FaceColor', red, 'LineStyle', 'none');
+area(inhibitoryData, 'FaceColor', blue, 'LineStyle', 'none');
+plot([0 1000], [0 0], 'Color', [0 0 0], 'LineWidth', 1)
+ylabel('# Neurons firing')
+xlabel('Time (ms)') 
+set(gca,'FontSize', fontSize)
+ylim([-7 10])
+
+
+%% Calculate power and spectrogram data
+
+% Parameters for power analysis
+powerParams.Fs = 1000;
+powerParams.fpass = 4:100;
+powerParams.tapers = [5 10];
+powerParams.trialave = 1;
+powerParams.err = [2, .05];
+powerParams.scales = logspace(1, log10(150)); % frequencies for spectrogram analysis
+
+% Get data
+[excitatoryPowerStore, inhibitoryPowerStore, fPower, ...
+    excitatorySpectrogramStore, inhibitorySpectrogramStore, F] = calculatePower(STM, powerParams);
+
+
+%% Plot power and spectrograms
+
+% % Plot power
+% hFig = figure(3);
+% set(hFig, 'Position', [10 10 600 500])
+% plot(fPower, squeeze(mean(excitatoryPowerStore(:,1,:),1)), 'LineWidth', 2)
+
+% Plot sample spectrogram
+hFig = figure(4); hold on;
+set(hFig, 'Position', [10 10 600 500])
+sampleSpectrogramData = squeeze(excitatorySpectrogramStore(1,1,:,:));
+imagesc(flipud(sampleSpectrogramData))
+caxis([0 1]);
+colorbar;
+colormap jet
+ax = gca;
+ax.YTick = 1:5:length(F);
+ax.YTickLabel = F(ax.YTick);
+ylim([1 50])
+xlim([1 1000])
+
+
+%% Analyse gamma power by alpha phase bin
+
+% Parameters for gamma power analysis
+gammaBand = [20 50]; % Gamma band
+gammaIndices = and(F>=gammaBand(1), F<=gammaBand(2));
+
+% Parameters for alpha phase analysis
+numberOfBins = 20;
+angleTimeSeries = mod(1:1000, 100) / 100;
+
+% Loop over excitatory and inhibitory data
+for currentData = 1:2
+    
+    if currentData == 1
+        
+    else
+        
+    end
+
+
+% Loop through bins
+powerByBin = zeros(numberOfBins-1,1);
+errByBin = zeros(numberOfBins-1,1);
+currentRange = [0 1/numberOfBins];
+dataToAnalyse = squeeze(inhibitorySpectrogramStore(1,:,:,:)); %squeeze(excitatorySpectrogramStore(1,:,:,:));
+for b = 1:(numberOfBins-1)
+    currentIndices = find(and(angleTimeSeries>currentRange(1), angleTimeSeries<currentRange(2)));
+    currentData = mean(mean(dataToAnalyse(:, gammaIndices', currentIndices'),1),2);
+    powerByBin(b) = mean(currentData);
+    errByBin(b) = std(currentData)/sqrt(length(currentData)); 
+    currentRange = currentRange + 1/numberOfBins;
+end
+
+% Shift to center on 0 degrees
+powerByBin = vertcat(powerByBin(7:end), powerByBin(1:6));
+errByBin = vertcat(errByBin(7:end), errByBin(1:6));
+
+% Plot results
+angles = linspace(-180, 180, 10);
+figure(300); hold on
+errorbar(powerByBin, errByBin, 'LineWidth', 2);
+ax = gca;
+ax.XTickLabel = angles;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+%% Plot spectrograms and gamma power against alpha current
+close all
+
+% Get gamma power
+gammaBand = [20 50];
+gammaIndices = and(F>=gammaBand(1), F<=gammaBand(2));
+
+% Get normalised alpha current
+alphaTimeseries = oscillator1.timeseries - min(oscillator1.timeseries);
+alphaTimeseries = alphaTimeseries / max(alphaTimeseries);
+% alphaTimeseries = (alphaTimeseries/2)+.25;
+
+% Parameters for phase by power analysis
+numberOfBins = 20;
+angleTimeSeries = mod(1:1000, 100) / 100;
+
+% Loop to plot for all trials
+for i = 1:numberOfTrials
+    figure(200+i)
+    
+    % Get data
+    data = squeeze(spectrogramStore(i,:,:));
+    data = flipud(data);
+    
+    % Plot spectrogram
+    subplot(2,1,1)
+    imagesc(data)
+    caxis([0 1]);
+    colorbar;
+    colormap jet
+    ax = gca;
+    ax.YTick = 1:5:length(F);
+    ax.YTickLabel = fliplr(F(ax.YTick));
+    xlim([1 1000])
+    
+    % Plot gamma power against alpha current
+    gammaPower = mean(data(gammaIndices,:));
+    subplot(2,1,2)
+    plot(gammaPower); hold on
+    plot(alphaTimeseries)
+    xlim([1 1180])
+    
+end
+
