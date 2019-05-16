@@ -33,7 +33,7 @@ classdef NeuralArea < handle % 'handle' allows properties to be updated
            'lts', struct('mean', 4, 'std', 4));
        
        % Parameters to be filled in constructor function
-       A; B; C; D; synapses; allIntraSynapses; allInterSynapses v;
+       A; B; C; D; synapses; allIntraSynapses; allInterSynapses; v;
        u; totalNeurons; v_timeseries; u_timeseries;
        
        % Contents to be filled during simulation
